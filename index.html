@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#020617" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Money Ticker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    .glass {
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+    .glass-hero {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.1) 50%, rgba(15, 23, 42, 0.6) 100%);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(52, 211, 153, 0.2);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    }
+    .ticker-value {
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.8);
+    }
+    html {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+    body {
+      padding-left: env(safe-area-inset-left, 0);
+      padding-right: env(safe-area-inset-right, 0);
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    .mobile-field {
+      font-size: 16px;
+    }
+    @media (min-width: 640px) {
+      .mobile-field {
+        font-size: 0.875rem;
+      }
+    }
+    .ticker-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .ticker-scroll::-webkit-scrollbar {
+      display: none;
+    }
+    .modal-sheet {
+      max-height: min(92dvh, 100%);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    @media (max-width: 639px) {
+      .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+      }
+      .modal-sheet {
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
+      }
+    }
+  </style>
+</head>
+<body class="min-h-[100dvh] min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+  <div class="fixed inset-0 pointer-events-none overflow-hidden">
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 -left-32 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-0 right-1/4 w-72 h-72 bg-teal-500/8 rounded-full blur-3xl"></div>
+  </div>
+
+  <div class="relative max-w-6xl mx-auto px-4 sm:px-6 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] sm:py-12">
+    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+          Money Ticker
+        </h1>
+        <p class="text-slate-400 text-sm mt-1">Cash interest &amp; live gold portfolio tracker</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
+        <div class="flex flex-col gap-1 min-w-0">
+          <label for="currencySelect" class="text-xs text-slate-400 uppercase tracking-wider">Currency</label>
+          <select id="currencySelect" class="touch-target mobile-field glass rounded-lg px-3 py-2.5 w-full text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-1 min-w-0">
+          <label for="decimalSelect" class="text-xs text-slate-400 uppercase tracking-wider">Decimals</label>
+          <select id="decimalSelect" class="touch-target mobile-field glass rounded-lg px-3 py-2.5 w-full text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/50">
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <section class="glass-hero rounded-2xl p-5 sm:p-10 mb-6 sm:mb-8">
+      <p class="text-slate-400 text-xs sm:text-sm font-medium uppercase tracking-widest mb-2">Total Portfolio Value</p>
+      <div class="ticker-scroll">
+        <p id="totalValue" class="ticker-value text-[clamp(1.75rem,8vw,3.75rem)] sm:text-5xl lg:text-6xl font-extrabold text-white whitespace-nowrap">—</p>
+      </div>
+      <p class="text-emerald-400/80 text-sm mt-3">Updating in real time</p>
+      <p id="goldSpotLine" class="hidden text-amber-400/90 text-xs sm:text-sm mt-2 ticker-scroll">
+        <span class="whitespace-nowrap">Gold spot: <span id="goldSpotPrice">—</span><span id="goldSpotMeta" class="text-slate-500"></span></span>
+      </p>
+    </section>
+
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+      <div class="glass rounded-xl p-4 sm:p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">Earning per Second</p>
+        <div class="ticker-scroll"><p id="earnPerSecond" class="ticker-value text-lg sm:text-2xl font-semibold text-emerald-400 whitespace-nowrap">—</p></div>
+      </div>
+      <div class="glass rounded-xl p-4 sm:p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">Earning per Minute</p>
+        <div class="ticker-scroll"><p id="earnPerMinute" class="ticker-value text-lg sm:text-2xl font-semibold text-cyan-400 whitespace-nowrap">—</p></div>
+      </div>
+      <div class="glass rounded-xl p-4 sm:p-5">
+        <p class="text-slate-400 text-xs uppercase tracking-wider mb-1">Earning per Day</p>
+        <div class="ticker-scroll"><p id="earnPerDay" class="ticker-value text-lg sm:text-2xl font-semibold text-teal-400 whitespace-nowrap">—</p></div>
+      </div>
+    </section>
+
+    <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mb-4">
+      <h2 class="text-lg font-semibold text-slate-200">Deposits</h2>
+      <button
+        id="openAddModal"
+        type="button"
+        class="touch-target inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 active:from-emerald-500 active:to-cyan-500 sm:hover:from-emerald-500 sm:hover:to-cyan-500 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition w-full sm:w-auto"
+      >
+        <span aria-hidden="true">+</span> Add Deposit
+      </button>
+    </div>
+
+    <div id="depositList" class="space-y-4"></div>
+    <p id="emptyState" class="hidden glass rounded-xl p-8 text-center text-slate-400">
+      No deposits yet. Add your first deposit to start the ticker.
+    </p>
+  </div>
+
+  <div id="addModal" class="hidden fixed inset-0 z-50 flex modal-overlay items-center justify-center p-4 sm:p-4 bg-black/60 backdrop-blur-sm" aria-modal="true" role="dialog">
+    <div class="modal-sheet glass rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl border border-slate-700/50">
+      <div class="flex justify-between items-center mb-5 sm:mb-6 gap-3">
+        <h3 id="depositModalTitle" class="text-lg font-semibold text-white">New Deposit</h3>
+        <button id="closeAddModal" type="button" class="touch-target inline-flex items-center justify-center text-slate-400 active:text-white sm:hover:text-white text-3xl leading-none shrink-0" aria-label="Close">&times;</button>
+      </div>
+      <form id="addDepositForm" class="space-y-4">
+        <div>
+          <label for="depositKind" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Deposit Type</label>
+          <select
+            id="depositKind"
+            name="kind"
+            class="mobile-field touch-target w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          >
+            <option value="cash">Cash / Fixed deposit (interest rate)</option>
+            <option value="gold">Gold (grams, live market price)</option>
+          </select>
+        </div>
+        <div>
+          <label for="depositName" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Deposit Name</label>
+          <input
+            id="depositName"
+            name="name"
+            type="text"
+            required
+            maxlength="80"
+            autocomplete="off"
+            enterkeyhint="next"
+            placeholder="e.g. Fixed Deposit A"
+            class="mobile-field w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+        </div>
+        <div>
+          <label for="depositDate" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Deposit Date</label>
+          <input
+            id="depositDate"
+            name="date"
+            type="date"
+            required
+            class="mobile-field w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+          />
+        </div>
+        <div id="cashFieldsGroup" class="space-y-4">
+          <div>
+            <label for="depositAmount" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Amount</label>
+            <input
+              id="depositAmount"
+              name="amount"
+              type="number"
+              inputmode="decimal"
+              min="0.01"
+              step="0.01"
+              enterkeyhint="next"
+              placeholder="400000"
+              class="mobile-field w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+          <div>
+            <label for="depositRate" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Annual Rate of Return (%)</label>
+            <input
+              id="depositRate"
+              name="rate"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              max="1000"
+              step="0.0001"
+              enterkeyhint="done"
+              placeholder="8"
+              class="mobile-field w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+        </div>
+        <div id="goldFieldsGroup" class="hidden space-y-3">
+          <div>
+            <label for="depositGrams" class="block text-xs text-slate-400 uppercase tracking-wider mb-1">Gold Weight (grams)</label>
+            <input
+              id="depositGrams"
+              name="grams"
+              type="number"
+              inputmode="decimal"
+              min="0.0001"
+              step="0.0001"
+              enterkeyhint="done"
+              placeholder="10"
+              class="mobile-field w-full rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-3 sm:py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+            />
+          </div>
+          <p class="text-xs text-slate-500 leading-relaxed">
+            On save, the app fetches the market gold price (USD spot, converted to your currency) for the deposit date and values your holding at the live spot price.
+          </p>
+        </div>
+        <p id="depositFormError" class="hidden text-sm text-red-400"></p>
+        <button
+          id="depositFormSubmit"
+          type="submit"
+          class="touch-target w-full rounded-lg bg-gradient-to-r from-emerald-600 to-cyan-600 active:from-emerald-500 active:to-cyan-500 sm:hover:from-emerald-500 sm:hover:to-cyan-500 py-3.5 sm:py-3 text-base sm:text-sm font-semibold text-white transition mt-2 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          Save Deposit
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const SECONDS_PER_YEAR = 31536000;
+      const TROY_OZ_GRAMS = 31.1034768;
+      const STORAGE_KEY = 'moneyTickerDeposits_v2';
+      const SETTINGS_KEY = 'moneyTickerSettings_v1';
+      const GOLD_HISTORY_CACHE_KEY = 'moneyTickerGoldHistory_v1';
+      const GOLD_HISTORY_TTL_MS = 12 * 60 * 60 * 1000;
+      const GOLD_LIVE_REFRESH_MS = 60 * 1000;
+      const GOLD_HISTORY_URL = 'https://freegoldapi.com/data/latest.json';
+      const GOLD_LIVE_URL = 'https://data-asg.goldprice.org/dbXRates/USD';
+      const LEGACY_STORAGE_KEY = 'moneyTickerDeposits_v1';
+
+      const CURRENCY_SYMBOLS = {
+        INR: '₹',
+        USD: '$',
+        EUR: '€',
+      };
+
+      const currencySelect = document.getElementById('currencySelect');
+      const decimalSelect = document.getElementById('decimalSelect');
+      const totalValueEl = document.getElementById('totalValue');
+      const earnPerSecondEl = document.getElementById('earnPerSecond');
+      const earnPerMinuteEl = document.getElementById('earnPerMinute');
+      const earnPerDayEl = document.getElementById('earnPerDay');
+      const depositListEl = document.getElementById('depositList');
+      const emptyStateEl = document.getElementById('emptyState');
+      const addModal = document.getElementById('addModal');
+      const openAddModalBtn = document.getElementById('openAddModal');
+      const closeAddModalBtn = document.getElementById('closeAddModal');
+      const addDepositForm = document.getElementById('addDepositForm');
+      const depositDateInput = document.getElementById('depositDate');
+      const depositNameInput = document.getElementById('depositName');
+      const depositAmountInput = document.getElementById('depositAmount');
+      const depositRateInput = document.getElementById('depositRate');
+      const depositModalTitle = document.getElementById('depositModalTitle');
+      const depositFormSubmit = document.getElementById('depositFormSubmit');
+      const depositKindSelect = document.getElementById('depositKind');
+      const cashFieldsGroup = document.getElementById('cashFieldsGroup');
+      const goldFieldsGroup = document.getElementById('goldFieldsGroup');
+      const depositGramsInput = document.getElementById('depositGrams');
+      const depositFormError = document.getElementById('depositFormError');
+      const goldSpotLine = document.getElementById('goldSpotLine');
+      const goldSpotPrice = document.getElementById('goldSpotPrice');
+      const goldSpotMeta = document.getElementById('goldSpotMeta');
+
+      let deposits = [];
+      let settings = { currency: 'INR', decimals: 2 };
+      let rafId = null;
+      let tickRunning = false;
+      let editingDepositId = null;
+      let goldLiveTimer = null;
+      let formSubmitting = false;
+
+      const fxState = {
+        rates: { USD: 1, INR: null, EUR: null },
+        fetchedDay: null,
+      };
+
+      const goldMarket = {
+        historyDates: [],
+        historyUsdOz: [],
+        historyLoaded: false,
+        liveUsdPerGram: null,
+        livePriceDay: null,
+        lastLiveFetchMs: 0,
+        prevLiveUsdPerGram: null,
+        prevLiveFetchMs: 0,
+        velocityUsdPerGramPerSec: 0,
+        loading: false,
+        error: null,
+      };
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem(SETTINGS_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.currency && CURRENCY_SYMBOLS[parsed.currency]) settings.currency = parsed.currency;
+            if ([2, 4, 6, 8].includes(Number(parsed.decimals))) settings.decimals = Number(parsed.decimals);
+          }
+        } catch (_) {}
+        currencySelect.value = settings.currency;
+        decimalSelect.value = String(settings.decimals);
+      }
+
+      function saveSettings() {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+
+      function loadDeposits() {
+        try {
+          let raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) {
+            raw = localStorage.getItem(LEGACY_STORAGE_KEY);
+          }
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              deposits = parsed.map(normalizeDeposit).filter(isValidDeposit);
+            }
+          }
+        } catch (_) {
+          deposits = [];
+        }
+      }
+
+      function normalizeDeposit(d) {
+        const kind = d.kind === 'gold' ? 'gold' : 'cash';
+        if (kind === 'cash') {
+          return { ...d, kind: 'cash' };
+        }
+        return { ...d, kind: 'gold' };
+      }
+
+      function saveDeposits() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(deposits));
+      }
+
+      function isValidDeposit(d) {
+        if (!d || typeof d.id !== 'string' || typeof d.name !== 'string' || typeof d.depositDateMs !== 'number') {
+          return false;
+        }
+        const kind = d.kind === 'gold' ? 'gold' : 'cash';
+        if (kind === 'cash') {
+          return typeof d.amount === 'number' && typeof d.ratePercent === 'number';
+        }
+        return typeof d.grams === 'number' && d.grams > 0 && typeof d.entryUsdPerGram === 'number' && d.entryUsdPerGram > 0;
+      }
+
+      function depositKind(deposit) {
+        return deposit.kind === 'gold' ? 'gold' : 'cash';
+      }
+
+      function hasGoldDeposits() {
+        return deposits.some((d) => depositKind(d) === 'gold');
+      }
+
+      function usdOzToUsdGram(usdOz) {
+        return usdOz / TROY_OZ_GRAMS;
+      }
+
+      async function fetchJson(url) {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      }
+
+      async function ensureFxRates(forDateStr) {
+        const dayKey = forDateStr || 'latest';
+        if (fxState.fetchedDay === dayKey && fxState.rates.INR && fxState.rates.EUR) return;
+        try {
+          const url = forDateStr
+            ? 'https://api.frankfurter.app/' + forDateStr + '?from=USD&to=INR,EUR'
+            : 'https://api.frankfurter.app/latest?from=USD&to=INR,EUR';
+          const data = await fetchJson(url);
+          fxState.rates.USD = 1;
+          fxState.rates.INR = data.rates.INR;
+          fxState.rates.EUR = data.rates.EUR;
+          fxState.fetchedDay = dayKey;
+        } catch (_) {
+          if (!fxState.rates.INR) fxState.rates.INR = 83;
+          if (!fxState.rates.EUR) fxState.rates.EUR = 0.92;
+        }
+      }
+
+      function fxForCurrency(currency) {
+        if (currency === 'USD') return 1;
+        return fxState.rates[currency] || 1;
+      }
+
+      function buildGoldHistoryIndex(rows) {
+        const dates = [];
+        const prices = [];
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row.date || typeof row.price !== 'number') continue;
+          if (row.date.length < 10) continue;
+          dates.push(row.date.slice(0, 10));
+          prices.push(row.price);
+        }
+        goldMarket.historyDates = dates;
+        goldMarket.historyUsdOz = prices;
+        goldMarket.historyLoaded = dates.length > 0;
+      }
+
+      function loadGoldHistoryFromCache() {
+        try {
+          const raw = localStorage.getItem(GOLD_HISTORY_CACHE_KEY);
+          if (!raw) return false;
+          const parsed = JSON.parse(raw);
+          if (!parsed || !parsed.savedAt || !Array.isArray(parsed.rows)) return false;
+          if (Date.now() - parsed.savedAt > GOLD_HISTORY_TTL_MS) return false;
+          buildGoldHistoryIndex(parsed.rows);
+          return goldMarket.historyLoaded;
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function saveGoldHistoryCache(rows) {
+        try {
+          localStorage.setItem(
+            GOLD_HISTORY_CACHE_KEY,
+            JSON.stringify({ savedAt: Date.now(), rows: rows.slice(-4000) })
+          );
+        } catch (_) {}
+      }
+
+      async function ensureGoldHistory() {
+        if (goldMarket.historyLoaded) return true;
+        if (loadGoldHistoryFromCache()) return true;
+        goldMarket.loading = true;
+        try {
+          const rows = await fetchJson(GOLD_HISTORY_URL);
+          if (!Array.isArray(rows)) throw new Error('Invalid gold history');
+          buildGoldHistoryIndex(rows);
+          saveGoldHistoryCache(rows);
+          goldMarket.error = null;
+          return goldMarket.historyLoaded;
+        } catch (err) {
+          goldMarket.error = 'Could not load gold price history.';
+          return false;
+        } finally {
+          goldMarket.loading = false;
+        }
+      }
+
+      function lookupHistoricalUsdOz(dateStr) {
+        const dates = goldMarket.historyDates;
+        const prices = goldMarket.historyUsdOz;
+        if (!dates.length) return null;
+        let lo = 0;
+        let hi = dates.length - 1;
+        let best = -1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (dates[mid] <= dateStr) {
+            best = mid;
+            lo = mid + 1;
+          } else {
+            hi = mid - 1;
+          }
+        }
+        if (best === -1) return null;
+        return { usdOz: prices[best], priceDate: dates[best] };
+      }
+
+      async function fetchLiveGoldUsdOz() {
+        try {
+          const data = await fetchJson(GOLD_LIVE_URL);
+          const item = data && data.items && data.items[0];
+          if (item && typeof item.xauPrice === 'number' && item.xauPrice > 0) {
+            return { usdOz: item.xauPrice, source: 'live' };
+          }
+        } catch (_) {}
+        if (goldMarket.historyUsdOz.length) {
+          const lastIdx = goldMarket.historyUsdOz.length - 1;
+          return {
+            usdOz: goldMarket.historyUsdOz[lastIdx],
+            source: 'history',
+            priceDate: goldMarket.historyDates[lastIdx],
+          };
+        }
+        return null;
+      }
+
+      function applyLiveGoldSample(usdOz, priceDay) {
+        const usdGram = usdOzToUsdGram(usdOz);
+        const now = Date.now();
+        if (goldMarket.liveUsdPerGram != null && goldMarket.lastLiveFetchMs > 0) {
+          const dt = (now - goldMarket.lastLiveFetchMs) / 1000;
+          if (dt > 0) {
+            goldMarket.velocityUsdPerGramPerSec = (usdGram - goldMarket.liveUsdPerGram) / dt;
+          }
+          goldMarket.prevLiveUsdPerGram = goldMarket.liveUsdPerGram;
+          goldMarket.prevLiveFetchMs = goldMarket.lastLiveFetchMs;
+        }
+        goldMarket.liveUsdPerGram = usdGram;
+        goldMarket.livePriceDay = priceDay || msToDateInputValue(now);
+        goldMarket.lastLiveFetchMs = now;
+        goldMarket.error = null;
+      }
+
+      async function refreshLiveGoldPrice() {
+        if (!hasGoldDeposits()) return;
+        await ensureGoldHistory();
+        const live = await fetchLiveGoldUsdOz();
+        if (!live) {
+          goldMarket.error = 'Live gold price unavailable.';
+          updateGoldSpotDisplay();
+          return;
+        }
+        const priceDay = live.priceDate || msToDateInputValue(Date.now());
+        applyLiveGoldSample(live.usdOz, priceDay);
+        updateGoldSpotDisplay();
+      }
+
+      function getEffectiveLiveUsdPerGram(nowMs) {
+        if (goldMarket.liveUsdPerGram == null) return null;
+        const elapsedSec = (nowMs - goldMarket.lastLiveFetchMs) / 1000;
+        if (elapsedSec <= 0 || !Number.isFinite(goldMarket.velocityUsdPerGramPerSec)) {
+          return goldMarket.liveUsdPerGram;
+        }
+        return goldMarket.liveUsdPerGram + goldMarket.velocityUsdPerGramPerSec * elapsedSec;
+      }
+
+      async function resolveEntryUsdPerGram(depositDateMs) {
+        await ensureGoldHistory();
+        const dateStr = msToDateInputValue(depositDateMs);
+        const hist = lookupHistoricalUsdOz(dateStr);
+        if (hist) {
+          return { usdPerGram: usdOzToUsdGram(hist.usdOz), priceDate: hist.priceDate };
+        }
+        const live = await fetchLiveGoldUsdOz();
+        if (live) {
+          return {
+            usdPerGram: usdOzToUsdGram(live.usdOz),
+            priceDate: live.priceDate || dateStr,
+          };
+        }
+        throw new Error('Unable to fetch gold price for the selected date.');
+      }
+
+      function updateGoldSpotDisplay() {
+        if (!hasGoldDeposits()) {
+          goldSpotLine.classList.add('hidden');
+          return;
+        }
+        goldSpotLine.classList.remove('hidden');
+        if (goldMarket.liveUsdPerGram == null) {
+          goldSpotPrice.textContent = goldMarket.loading ? 'Loading…' : 'Unavailable';
+          goldSpotMeta.textContent = goldMarket.error ? ' — ' + goldMarket.error : '';
+          return;
+        }
+        const fx = fxForCurrency(settings.currency);
+        const perGram = goldMarket.liveUsdPerGram * fx;
+        goldSpotPrice.textContent = formatMoney(perGram) + ' / g';
+        const day = goldMarket.livePriceDay ? ' · ' + goldMarket.livePriceDay : '';
+        goldSpotMeta.textContent = ' (24k spot, USD market' + day + ')';
+      }
+
+      function scheduleGoldLiveRefresh() {
+        if (goldLiveTimer) clearInterval(goldLiveTimer);
+        if (!hasGoldDeposits()) {
+          goldSpotLine.classList.add('hidden');
+          return;
+        }
+        refreshLiveGoldPrice();
+        goldLiveTimer = setInterval(refreshLiveGoldPrice, GOLD_LIVE_REFRESH_MS);
+      }
+
+      function generateId() {
+        return 'dep_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+      }
+
+      function parseDepositDateToMs(dateStr) {
+        const parts = dateStr.split('-').map(Number);
+        if (parts.length !== 3) return NaN;
+        const [y, m, d] = parts;
+        return new Date(y, m - 1, d, 0, 0, 0, 0).getTime();
+      }
+
+      function formatDateFromMs(ms) {
+        const dt = new Date(ms);
+        return dt.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      }
+
+      function msToDateInputValue(ms) {
+        const dt = new Date(ms);
+        const y = dt.getFullYear();
+        const m = String(dt.getMonth() + 1).padStart(2, '0');
+        const d = String(dt.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+      }
+
+      function setDepositFormMode(mode) {
+        const isEdit = mode === 'edit';
+        depositModalTitle.textContent = isEdit ? 'Edit Deposit' : 'New Deposit';
+        if (!formSubmitting) {
+          depositFormSubmit.textContent = isEdit ? 'Save Changes' : 'Save Deposit';
+        }
+      }
+
+      function setFormError(message) {
+        if (!message) {
+          depositFormError.classList.add('hidden');
+          depositFormError.textContent = '';
+          return;
+        }
+        depositFormError.textContent = message;
+        depositFormError.classList.remove('hidden');
+      }
+
+      function syncDepositKindFields() {
+        const isGold = depositKindSelect.value === 'gold';
+        goldFieldsGroup.classList.toggle('hidden', !isGold);
+        cashFieldsGroup.classList.toggle('hidden', isGold);
+        depositAmountInput.required = !isGold;
+        depositRateInput.required = !isGold;
+        depositGramsInput.required = isGold;
+        depositKindSelect.disabled = !!editingDepositId;
+      }
+
+      function getSymbol() {
+        return CURRENCY_SYMBOLS[settings.currency] || '₹';
+      }
+
+      function formatMoney(value) {
+        const dec = settings.decimals;
+        const sym = getSymbol();
+        const formatted = Number(value).toLocaleString(undefined, {
+          minimumFractionDigits: dec,
+          maximumFractionDigits: dec,
+        });
+        return sym + formatted;
+      }
+
+      function elapsedSecondsSince(depositDateMs, nowMs) {
+        const elapsedMs = Math.max(0, nowMs - depositDateMs);
+        return elapsedMs / 1000;
+      }
+
+      function interestEarned(amount, ratePercent, elapsedSeconds) {
+        const rate = ratePercent / 100;
+        return amount * rate * (elapsedSeconds / SECONDS_PER_YEAR);
+      }
+
+      function currentValue(amount, ratePercent, elapsedSeconds) {
+        return amount + interestEarned(amount, ratePercent, elapsedSeconds);
+      }
+
+      function earnPerSecond(amount, ratePercent) {
+        const rate = ratePercent / 100;
+        return (amount * rate) / SECONDS_PER_YEAR;
+      }
+
+      function computeDepositState(deposit, nowMs) {
+        if (depositKind(deposit) === 'gold') {
+          const fx = fxForCurrency(settings.currency);
+          const entryValue = deposit.grams * deposit.entryUsdPerGram * fx;
+          const liveUsdGram = getEffectiveLiveUsdPerGram(nowMs) ?? deposit.entryUsdPerGram;
+          const value = deposit.grams * liveUsdGram * fx;
+          const interest = value - entryValue;
+          const velocity = goldMarket.velocityUsdPerGramPerSec || 0;
+          const eps = deposit.grams * velocity * fx;
+          return {
+            elapsed: elapsedSecondsSince(deposit.depositDateMs, nowMs),
+            interest,
+            value,
+            eps,
+            entryValue,
+            isGold: true,
+          };
+        }
+        const elapsed = elapsedSecondsSince(deposit.depositDateMs, nowMs);
+        const interest = interestEarned(deposit.amount, deposit.ratePercent, elapsed);
+        const value = deposit.amount + interest;
+        const eps = earnPerSecond(deposit.amount, deposit.ratePercent);
+        return {
+          elapsed,
+          interest,
+          value,
+          eps,
+          entryValue: deposit.amount,
+          isGold: false,
+        };
+      }
+
+      function aggregate(nowMs) {
+        let total = 0;
+        let totalEps = 0;
+        const rows = deposits.map((dep) => {
+          const state = computeDepositState(dep, nowMs);
+          total += state.value;
+          totalEps += state.eps;
+          return { deposit: dep, ...state };
+        });
+        return {
+          total,
+          totalEps,
+          totalEpm: totalEps * 60,
+          totalEpd: totalEps * 86400,
+          rows,
+        };
+      }
+
+      function renderDepositCards(rows) {
+        if (deposits.length === 0) {
+          depositListEl.innerHTML = '';
+          emptyStateEl.classList.remove('hidden');
+          return;
+        }
+        emptyStateEl.classList.add('hidden');
+        depositListEl.innerHTML = rows
+          .map(({ deposit, value, interest, entryValue, isGold }) => {
+            const safeName = escapeHtml(deposit.name);
+            const typeBadge = isGold
+              ? '<span class="ml-2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/25">Gold</span>'
+              : '<span class="ml-2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Cash</span>';
+            const gainClass = interest >= 0 ? 'text-teal-400' : 'text-red-400';
+            const detailGrid = isGold
+              ? `
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Current Value</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-bold text-emerald-400 dep-current-value whitespace-nowrap">${formatMoney(value)}</p></div>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Weight</p>
+                    <p class="ticker-value text-base sm:text-lg font-medium text-amber-300">${deposit.grams.toLocaleString()} g</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Value at Deposit</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-medium text-slate-200 whitespace-nowrap dep-entry-value">${formatMoney(entryValue)}</p></div>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Gain / Loss</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-semibold ${gainClass} dep-interest whitespace-nowrap">${formatMoney(interest)}</p></div>
+                  </div>
+                `
+              : `
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Current Value</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-bold text-emerald-400 dep-current-value whitespace-nowrap">${formatMoney(value)}</p></div>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Original Principal</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-medium text-slate-200 whitespace-nowrap">${formatMoney(deposit.amount)}</p></div>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Annual Rate</p>
+                    <p class="ticker-value text-base sm:text-lg font-medium text-cyan-400">${deposit.ratePercent}%</p>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="text-xs text-slate-500 uppercase tracking-wider">Interest Earned</p>
+                    <div class="ticker-scroll"><p class="ticker-value text-base sm:text-lg font-semibold text-teal-400 dep-interest whitespace-nowrap">${formatMoney(interest)}</p></div>
+                  </div>
+                `;
+            return `
+              <article class="glass rounded-xl p-5 sm:p-6 border border-slate-800/80 hover:border-emerald-500/20 transition" data-id="${deposit.id}" data-kind="${isGold ? 'gold' : 'cash'}">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div class="min-w-0 flex-1">
+                    <h3 class="font-semibold text-lg text-white truncate inline-flex items-center max-w-full">${safeName}${typeBadge}</h3>
+                    <p class="text-slate-500 text-sm mt-0.5">Deposited ${formatDateFromMs(deposit.depositDateMs)}${isGold && deposit.entryPriceDate ? ' · priced ' + deposit.entryPriceDate : ''}</p>
+                  </div>
+                  <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+                    <button type="button" class="edit-deposit touch-target rounded-lg border border-cyan-500/30 text-cyan-400 active:bg-cyan-500/10 sm:hover:bg-cyan-500/10 px-4 py-2.5 text-sm font-medium transition w-full sm:w-auto" data-id="${deposit.id}">Edit</button>
+                    <button type="button" class="delete-deposit touch-target rounded-lg border border-red-500/30 text-red-400 active:bg-red-500/10 sm:hover:bg-red-500/10 px-4 py-2.5 text-sm font-medium transition w-full sm:w-auto" data-id="${deposit.id}">Delete</button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-800/80">
+                  ${detailGrid}
+                </div>
+              </article>
+            `;
+          })
+          .join('');
+      }
+
+      function updateLiveValuesOnly(rows, agg) {
+        totalValueEl.textContent = formatMoney(agg.total);
+        earnPerSecondEl.textContent = formatMoney(agg.totalEps);
+        earnPerMinuteEl.textContent = formatMoney(agg.totalEpm);
+        earnPerDayEl.textContent = formatMoney(agg.totalEpd);
+
+        const cards = depositListEl.querySelectorAll('[data-id]');
+        cards.forEach((card) => {
+          const id = card.getAttribute('data-id');
+          const row = rows.find((r) => r.deposit.id === id);
+          if (!row) return;
+          const cv = card.querySelector('.dep-current-value');
+          const intr = card.querySelector('.dep-interest');
+          if (cv) cv.textContent = formatMoney(row.value);
+          if (intr) intr.textContent = formatMoney(row.interest);
+        });
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function tick() {
+        if (!tickRunning) return;
+        const nowMs = Date.now();
+        const agg = aggregate(nowMs);
+        if (deposits.length === 0) {
+          totalValueEl.textContent = formatMoney(0);
+          earnPerSecondEl.textContent = formatMoney(0);
+          earnPerMinuteEl.textContent = formatMoney(0);
+          earnPerDayEl.textContent = formatMoney(0);
+        } else if (depositListEl.children.length === deposits.length) {
+          updateLiveValuesOnly(agg.rows, agg);
+        } else {
+          renderDepositCards(agg.rows);
+          updateLiveValuesOnly(agg.rows, agg);
+        }
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function startTick() {
+        if (tickRunning) return;
+        tickRunning = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(tick);
+      }
+
+      function stopTick() {
+        tickRunning = false;
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopTick();
+          if (goldLiveTimer) {
+            clearInterval(goldLiveTimer);
+            goldLiveTimer = null;
+          }
+        } else {
+          startTick();
+          scheduleGoldLiveRefresh();
+        }
+      });
+
+      function openModalShell() {
+        addModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+      }
+
+      function openAddModal() {
+        editingDepositId = null;
+        setDepositFormMode('add');
+        setFormError('');
+        addDepositForm.reset();
+        depositKindSelect.value = 'cash';
+        syncDepositKindFields();
+        const today = new Date();
+        depositDateInput.value = msToDateInputValue(today.getTime());
+        openModalShell();
+      }
+
+      function openEditModal(deposit) {
+        editingDepositId = deposit.id;
+        setDepositFormMode('edit');
+        setFormError('');
+        depositNameInput.value = deposit.name;
+        depositDateInput.value = msToDateInputValue(deposit.depositDateMs);
+        if (depositKind(deposit) === 'gold') {
+          depositKindSelect.value = 'gold';
+          depositGramsInput.value = String(deposit.grams);
+          depositAmountInput.value = '';
+          depositRateInput.value = '';
+        } else {
+          depositKindSelect.value = 'cash';
+          depositAmountInput.value = String(deposit.amount);
+          depositRateInput.value = String(deposit.ratePercent);
+          depositGramsInput.value = '';
+        }
+        syncDepositKindFields();
+        openModalShell();
+      }
+
+      function closeModal() {
+        addModal.classList.add('hidden');
+        document.body.style.overflow = '';
+        document.body.style.touchAction = '';
+        addDepositForm.reset();
+        editingDepositId = null;
+        formSubmitting = false;
+        depositFormSubmit.disabled = false;
+        depositKindSelect.disabled = false;
+        setFormError('');
+        setDepositFormMode('add');
+        syncDepositKindFields();
+      }
+
+      openAddModalBtn.addEventListener('click', openAddModal);
+      closeAddModalBtn.addEventListener('click', closeModal);
+      addModal.addEventListener('click', (e) => {
+        if (e.target === addModal) closeModal();
+      });
+
+      depositKindSelect.addEventListener('change', syncDepositKindFields);
+
+      addDepositForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (formSubmitting) return;
+        setFormError('');
+        const fd = new FormData(addDepositForm);
+        const kind = String(fd.get('kind') || 'cash');
+        const name = String(fd.get('name') || '').trim();
+        const dateStr = String(fd.get('date') || '');
+        const depositDateMs = parseDepositDateToMs(dateStr);
+        if (!name || !Number.isFinite(depositDateMs)) {
+          setFormError('Please fill in a valid name and date.');
+          return;
+        }
+
+        formSubmitting = true;
+        depositFormSubmit.disabled = true;
+        depositFormSubmit.textContent = kind === 'gold' ? 'Fetching gold price…' : 'Saving…';
+
+        try {
+          if (kind === 'gold') {
+            const grams = Number(fd.get('grams'));
+            if (!Number.isFinite(grams) || grams <= 0) {
+              setFormError('Enter a valid weight in grams.');
+              return;
+            }
+            const entry = await resolveEntryUsdPerGram(depositDateMs);
+            const payload = {
+              kind: 'gold',
+              name,
+              depositDateMs,
+              grams,
+              entryUsdPerGram: entry.usdPerGram,
+              entryPriceDate: entry.priceDate,
+            };
+            if (editingDepositId) {
+              const idx = deposits.findIndex((d) => d.id === editingDepositId);
+              if (idx === -1) return;
+              deposits[idx] = { ...deposits[idx], ...payload };
+            } else {
+              deposits.push({ id: generateId(), ...payload });
+            }
+          } else {
+            const amount = Number(fd.get('amount'));
+            const ratePercent = Number(fd.get('rate'));
+            if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(ratePercent) || ratePercent < 0) {
+              setFormError('Enter a valid amount and interest rate.');
+              return;
+            }
+            const payload = {
+              kind: 'cash',
+              name,
+              depositDateMs,
+              amount,
+              ratePercent,
+            };
+            if (editingDepositId) {
+              const idx = deposits.findIndex((d) => d.id === editingDepositId);
+              if (idx === -1) return;
+              deposits[idx] = { ...deposits[idx], ...payload };
+            } else {
+              deposits.push({ id: generateId(), ...payload });
+            }
+          }
+          saveDeposits();
+          closeModal();
+          await ensureFxRates();
+          scheduleGoldLiveRefresh();
+          renderDepositCards(aggregate(Date.now()).rows);
+        } catch (err) {
+          setFormError(err && err.message ? err.message : 'Could not save deposit.');
+        } finally {
+          formSubmitting = false;
+          if (!addModal.classList.contains('hidden')) {
+            depositFormSubmit.disabled = false;
+            depositFormSubmit.textContent = editingDepositId ? 'Save Changes' : 'Save Deposit';
+          }
+        }
+      });
+
+      depositListEl.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-deposit');
+        if (editBtn) {
+          const id = editBtn.getAttribute('data-id');
+          const deposit = deposits.find((d) => d.id === id);
+          if (deposit) openEditModal(deposit);
+          return;
+        }
+        const deleteBtn = e.target.closest('.delete-deposit');
+        if (!deleteBtn) return;
+        const id = deleteBtn.getAttribute('data-id');
+        deposits = deposits.filter((d) => d.id !== id);
+        saveDeposits();
+        scheduleGoldLiveRefresh();
+        renderDepositCards(aggregate(Date.now()).rows);
+      });
+
+      currencySelect.addEventListener('change', async () => {
+        settings.currency = currencySelect.value;
+        saveSettings();
+        fxState.fetchedDay = null;
+        await ensureFxRates();
+        updateGoldSpotDisplay();
+        renderDepositCards(aggregate(Date.now()).rows);
+      });
+
+      decimalSelect.addEventListener('change', () => {
+        settings.decimals = Number(decimalSelect.value);
+        saveSettings();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !addModal.classList.contains('hidden')) closeModal();
+      });
+
+      loadSettings();
+      loadDeposits();
+      syncDepositKindFields();
+      (async function init() {
+        await ensureFxRates();
+        if (hasGoldDeposits()) {
+          await ensureGoldHistory();
+          scheduleGoldLiveRefresh();
+        }
+        renderDepositCards(aggregate(Date.now()).rows);
+        startTick();
+      })();
+    })();
+  </script>
+</body>
+</html>
